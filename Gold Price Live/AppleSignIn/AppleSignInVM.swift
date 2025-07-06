@@ -22,7 +22,7 @@ class AppleSignInVM: ObservableObject {
 
     @Published var serverErrorMessage: String?
 
-    let url = "https://3ee0-2001-d08-1c06-6604-a1b5-7a4d-f083-8669.ngrok-free.app"
+    let url = "https://373e-2001-d08-1c06-6604-842-945-e02d-961e.ngrok-free.app"
 
     // MARK: - Apple Sign In
 
@@ -38,8 +38,7 @@ class AppleSignInVM: ObservableObject {
         case .success(let authResults):
             await handleSignInResult(authResults, nonce: currentNonce)
         case .failure(let error):
-            print("Apple sign-in failed: \(error.localizedDescription)")
-            serverErrorMessage = "Apple sign-in failed: \(error.localizedDescription)"
+            print("handleCompletion: \(error.localizedDescription)")
         }
     }
 
@@ -48,7 +47,7 @@ class AppleSignInVM: ObservableObject {
               let appleIDToken = appleIDCredential.identityToken,
               let idTokenString = String(data: appleIDToken, encoding: .utf8),
               let nonce = nonce else {
-            serverErrorMessage = "Missing Apple credentials"
+            print("handleSignInResult: Missing Apple credentials")
             return
         }
 
@@ -81,7 +80,9 @@ class AppleSignInVM: ObservableObject {
                 if let serverError = try? JSONDecoder().decode(ServerErrorResponse.self, from: data) {
                     serverErrorMessage = serverError.detail
                 } else {
-                    serverErrorMessage = "Login failed with status \(String(describing: (response as? HTTPURLResponse)?.statusCode))"
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    let statusText = HTTPURLResponse.localizedString(forStatusCode: statusCode).capitalized
+                    serverErrorMessage = "Login failed with status: \(statusCode) \(statusText)"
                 }
                 return
             }
@@ -140,11 +141,13 @@ class AppleSignInVM: ObservableObject {
                 return
             }
 
-            if httpResponse.statusCode != 200 {
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                 if let serverError = try? JSONDecoder().decode(ServerErrorResponse.self, from: data) {
                     serverErrorMessage = serverError.detail
                 } else {
-                    serverErrorMessage = "Refresh failed with status \(httpResponse.statusCode)"
+                    let statusCode = httpResponse.statusCode
+                    let statusText = HTTPURLResponse.localizedString(forStatusCode: statusCode).capitalized
+                    serverErrorMessage = "Renew access token failed: \(statusCode) \(statusText)"
                 }
                 isLoggedIn = false
                 return
@@ -164,8 +167,8 @@ class AppleSignInVM: ObservableObject {
             startTokenExpiryTimer()
 
         } catch {
-            serverErrorMessage = "Refresh request failed: \(error.localizedDescription)"
-            print("❌ Refresh token request failed: \(error)")
+            serverErrorMessage = "Renew access token request failed: \(error.localizedDescription)"
+            print("❌ Renew access token request failed: \(error)")
         }
     }
     
@@ -194,7 +197,9 @@ class AppleSignInVM: ObservableObject {
                 if let serverError = try? JSONDecoder().decode(ServerErrorResponse.self, from: data) {
                     serverErrorMessage = serverError.detail
                 } else {
-                    serverErrorMessage = "Failed to renew refresh token"
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    let statusText = HTTPURLResponse.localizedString(forStatusCode: statusCode).capitalized
+                    serverErrorMessage = "renew refresh token failed with status: \(statusCode) \(statusText)"
                 }
                 isLoggedIn = false
                 return

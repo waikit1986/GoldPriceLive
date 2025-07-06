@@ -13,6 +13,10 @@ struct AppleSignInView: View {
     @EnvironmentObject var appleSignInVM: AppleSignInVM
     
     var body: some View {
+        if let serverErrorMessage = appleSignInVM.serverErrorMessage {
+            Text(serverErrorMessage)
+        }
+        
         if appleSignInVM.isLoggedIn == false {
             SignInWithAppleButton(.signIn) { request in
                 appleSignInVM.configure(request: request)
